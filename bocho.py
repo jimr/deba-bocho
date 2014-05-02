@@ -35,12 +35,11 @@ def _slice_page(fname, index):
     if ret != 0:
         raise Exception('Unable to generate PNG from page %d' % index)
 
-    print out_path
     return out_path
 
 
 def bocho(fname, pages=None, width=None, height=None, angle=None, offset=None,
-          spacing=None):
+          spacing=None, verbose=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
     height = height or DEFAULTS.get('height')
@@ -71,7 +70,12 @@ def bocho(fname, pages=None, width=None, height=None, angle=None, offset=None,
         if angle != 0:
             img = img.rotate(angle)
 
-        outfile.paste(img, (width - (spacing * x), 0))
+        coords = (width - (spacing * x + offset), 0)
+        if verbose:
+            print 'placing page %d at %s' % (
+                pages[len(pages) - x], coords
+            )
+        outfile.paste(img, coords)
 
     outfile.save(file_path)
 
@@ -95,6 +99,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--spacing', type=int, nargs='?', default=DEFAULTS.get('spacing'),
     )
+    parser.add_argument(
+        '--verbose', action='store_true', default=False,
+    )
     parser.add_argument('--pages', type=int, nargs='*')
     parser.add_argument('pdf_file')
     args = parser.parse_args()
@@ -104,5 +111,5 @@ if __name__ == '__main__':
 
     print bocho(
         args.pdf_file, args.pages, args.width, args.height, args.angle,
-        args.offset, args.spacing,
+        args.offset, args.spacing, args.verbose,
     )

@@ -16,9 +16,8 @@ DEFAULTS = {
     'width': 630,  # pixels
     'height': 290,  # pixels
     'angle': 0,  # degrees anti-clockwise from vertical
-    'offset_x': 0,  # pixels
-    'offset_y': 0,  # pixels
-    'spacing': 107,  # pixels
+    'offset': (0, 0),  # pixels
+    'spacing': (107, 0),  # pixels
     'zoom': 1.0,
 }
 
@@ -70,15 +69,13 @@ def _add_border(img, fill='black', width=2):
         draw.line(xy, fill=fill, width=width)
 
 
-def bocho(fname, pages=None, width=None, height=None, offset_x=None,
-          offset_y=None, spacing=None, zoom=None, angle=None, affine=False,
-          reverse=False):
+def bocho(fname, pages=None, width=None, height=None, offset=None,
+          spacing=None, zoom=None, angle=None, affine=False, reverse=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
     height = height or DEFAULTS.get('height')
     angle = angle or DEFAULTS.get('angle')
-    offset_x = offset_x or DEFAULTS.get('offset_x')
-    offset_y = offset_y or DEFAULTS.get('offset_y')
+    offset = offset or DEFAULTS.get('offset')
     spacing = spacing or DEFAULTS.get('spacing')
     zoom = zoom or DEFAULTS.get('zoom')
 
@@ -99,11 +96,10 @@ def bocho(fname, pages=None, width=None, height=None, offset_x=None,
         )
 
     n = len(pages)
-    x_spacing = spacing
-    y_spacing = 0
+    x_spacing, y_spacing = spacing
 
     if angle:
-        y_spacing = spacing * math.cos(angle)
+        y_spacing = x_spacing * math.cos(angle)
         x_spacing = abs(y_spacing / math.tan(angle))
 
     log('spacing: %s' % str((x_spacing, y_spacing)))
@@ -167,6 +163,7 @@ def bocho(fname, pages=None, width=None, height=None, offset_x=None,
 
     if angle != 0:
         if affine:
+            # Currently we just apply a non-configurable, subtle transform
             outfile = outfile.transform(
                 (px(outfile.size[0] * 1.5), outfile.size[1]),
                 Image.AFFINE,
@@ -174,14 +171,14 @@ def bocho(fname, pages=None, width=None, height=None, offset_x=None,
                 Image.BICUBIC,
             )
 
-        outfile = outfile.rotate(math.degrees(angle), Image.BILINEAR, True)
+        outfile = outfile.rotate(math.degrees(angle), Image.BICUBIC, True)
         log('output size before cropping: %s' % str(outfile.size))
 
         # Rotation is about the center (and expands to fit the result), so
         # cropping is simply a case of positioning a rectangle of the desired
         # width & height about the center of the rotated image.
-        left = px((outfile.size[0] - width) / 2) - offset_x
-        top = px((outfile.size[1] - height) / 2) - offset_y
+        left = px((outfile.size[0] - width) / 2) - offset[0]
+        top = px((outfile.size[1] - height) / 2) - offset[1]
         outfile = outfile.crop((left, top, left + width, top + height))
 
     outfile.save(file_path)
@@ -209,7 +206,10 @@ if __name__ == '__main__':
         '--offset_y', type=int, nargs='?', default=DEFAULTS.get('offset_y'),
     )
     parser.add_argument(
-        '--spacing', type=int, nargs='?', default=DEFAULTS.get('spacing'),
+        '--spacing_x', type=int, nargs='?', default=DEFAULTS.get('spacing_y'),
+    )
+    parser.add_argument(
+        '--spacing_y', type=int, nargs='?', default=DEFAULTS.get('spacing_y'),
     )
     parser.add_argument(
         '--zoom', type=float, nargs='?', default=DEFAULTS.get('zoom'),
@@ -234,6 +234,6 @@ if __name__ == '__main__':
 
     print bocho(
         args.pdf_file, args.pages, args.width, args.height,
-        args.offset_x, args.offset_y, args.spacing,
+        (args.offset_x, args.offset_y), (args.spacing_x, args.spacing_y),
         args.zoom, args.angle, args.affine, args.reverse,
     )

@@ -38,8 +38,10 @@ TODO
 - optional right-to-left stacking ✓
 - handle non-A4 aspect ratio input documents ✓
 - optionally apply transforms:
+
   - affine ✓ (basic, subtle, non-configurable)
   - perspective
+
 - ensure sliced PNGs are large enough when custom width / height are specified
 - fix y spacing calculation to account for any applied transformations
 - docs

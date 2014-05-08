@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import math
 import shlex
 import os
 import subprocess
@@ -17,6 +18,7 @@ DEFAULTS = {
     'angle': 0,  # degrees anti-clockwise from vertical
     'offset': 0,  # pixels
     'spacing': 107,  # pixels
+    'zoom': 1.0,
 }
 
 ASPECT = 0.7  # approximate A4 aspect ratio
@@ -47,13 +49,18 @@ def _slice_page(fname, index, verbose=False):
 
 
 def bocho(fname, pages=None, width=None, height=None, angle=None, offset=None,
-          spacing=None, verbose=False):
+          spacing=None, zoom=None, verbose=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
     height = height or DEFAULTS.get('height')
     angle = angle or DEFAULTS.get('angle')
     offset = offset or DEFAULTS.get('offset')
     spacing = spacing or DEFAULTS.get('spacing')
+    zoom = zoom or DEFAULTS.get('zoom')
+
+    assert -90 <= angle <= 90
+
+    angle = math.radians(angle)
 
     file_path = '%s-bocho-%sx%s.png' % (fname[:-4], width, height)
     if os.path.exists(file_path):
@@ -67,34 +74,84 @@ def bocho(fname, pages=None, width=None, height=None, angle=None, offset=None,
             '(it is %d pages long)' % infile.numPages
         )
 
-    page_width = height * ASPECT
+    n = len(pages)
+    page_height = int(height * zoom)
+    page_width = page_height * ASPECT
+    x_spacing = spacing
+    y_spacing = 0
+
+    if angle:
+        y_spacing = spacing * math.cos(angle)
+        x_spacing = abs(y_spacing / math.tan(angle))
+
+    if verbose:
+        print 'spacing: %s' % str((x_spacing, y_spacing))
+
     page_images = [
         Image.open(_slice_page(fname, x - 1, verbose)).convert('RGB')
         for x in pages
     ]
-    x_coords = [
-        offset + x * spacing for x in range(len(pages))
-    ]
 
-    outfile = Image.new('RGB', (width, height))
+    # If there's no angle specified then all the y coords will be zero and the
+    # x coords will be a multiple of the provided spacing plus the offset.
+    x_coords = map(int, [offset + (i * x_spacing) for i in range(n)])
+    y_coords = map(int, [i * y_spacing for i in range(n)])
+
+    if angle < 0:
+        y_coords.sort(reverse=True)
+
+    size = (width, height)
+    if angle != 0:
+        # If we're rotating the pages, we stack them up with appropriate
+        # horizontal and vertical offsets first, then we rotate the result.
+        # Because of this, we must expand the output image to be large enough
+        # to fit the unrotated stack. The rotation operation below will expand
+        # the output image enough so everything still fits, but this bit we
+        # need to figure out for ourselves in advance.
+        size = (
+            int((page_width * n) - (page_width - x_spacing) * (n - 1)),
+            int(page_height + max(y_coords))
+        )
+
+    outfile = Image.new('RGB', size)
+
+    if verbose:
+        print 'output size before rotating: %s' % str(size)
+
     for x, img in enumerate(reversed(page_images), 1):
-        # Draw lines down the right edges of each page to provide visual
-        # separation. Cheap drop-shadow basically.
+        # Draw lines down the right and bottom edges of each page to provide
+        # visual separation. Cheap drop-shadow basically.
+        # Right-hand edges first...
         draw = ImageDraw.Draw(img)
         xy = ((img.size[0] - 2, 0), (img.size[0] - 2, img.size[1]))
-        print 'drawing a line between %s and %s' % xy
+        if verbose:
+            print 'drawing a line between %s and %s' % xy
         draw.line(xy, fill='black', width=2)
 
-        # This really doesn't work well at all.
-        if angle != 0:
-            img = img.rotate(angle, Image.BILINEAR)
+        # ...then bottom edges.
+        xy = ((0, img.size[1] - 2), (img.size[0], img.size[1] - 2))
+        if verbose:
+            print 'drawing a line between %s and %s' % xy
+        draw.line(xy, fill='black', width=2)
 
-        img = img.resize((int(page_width), height), Image.ANTIALIAS)
+        img = img.resize((int(page_width), page_height), Image.ANTIALIAS)
 
-        coords = (x_coords[-x], 0)
+        coords = (x_coords[-x], y_coords[-x])
         if verbose:
             print 'placing page %d at %s' % (pages[-x], coords)
         outfile.paste(img, coords)
+
+    if angle != 0:
+        outfile = outfile.rotate(math.degrees(angle), Image.BILINEAR, True)
+        if verbose:
+            print 'output size before cropping: %s' % str(outfile.size)
+
+        # Rotation is about the center (and expands to fit the result), so
+        # cropping is simply a case of positioning a rectangle of the desired
+        # width & height about the center of the rotated image.
+        left = int((outfile.size[0] - width) / 2)
+        top = int((outfile.size[1] - height) / 2)
+        outfile = outfile.crop((left, top, left + width, top + height))
 
     outfile.save(file_path)
     return file_path
@@ -110,12 +167,16 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--angle', type=int, nargs='?', default=DEFAULTS.get('angle'),
+        help='Angle of rotation (between -90 and 90 degrees)',
     )
     parser.add_argument(
         '--offset', type=int, nargs='?', default=DEFAULTS.get('offset'),
     )
     parser.add_argument(
         '--spacing', type=int, nargs='?', default=DEFAULTS.get('spacing'),
+    )
+    parser.add_argument(
+        '--zoom', type=float, nargs='?', default=DEFAULTS.get('zoom'),
     )
     parser.add_argument(
         '--verbose', action='store_true', default=False,
@@ -129,5 +190,5 @@ if __name__ == '__main__':
 
     print bocho(
         args.pdf_file, args.pages, args.width, args.height, args.angle,
-        args.offset, args.spacing, args.verbose,
+        args.offset, args.spacing, args.zoom, args.verbose,
     )

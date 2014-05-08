@@ -4,7 +4,7 @@ Deba bōchō
 
 Slice up PDFs like a pro::
 
-    % python bocho.py my-fancy-file.pdf --offset 5 --pages 1 3 5 6 10
+    % python bocho.py my-fancy-file.pdf --pages 1 3 5 6 10 --angle 30 --zoom 1.6
     my-fancy-file-bocho-630x290.png
 
 ``bocho`` takes a PDF file and creates a "stacked page" preview from a selection of pages.
@@ -31,11 +31,12 @@ TODO
 
 Pretty much everything.
 
-- implement rotation properly
-- allow a "zoom" option
+- implement rotation properly ✓
+- allow a "zoom" option ✓
 - optional drop-shadows (and make right-edge black separators optional also)
 - automatic spacing as an option as well as fixed pixel spacing
 - horizontal and vertical offsets (probably requires "zoom")
 - optional right-to-left stacking
 - handle non-A4 aspect ratio input documents
 - ensure sliced PNGs are large enough when custom width / height are specified
+- docs

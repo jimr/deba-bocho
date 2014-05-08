@@ -22,8 +22,12 @@ DEFAULTS = {
     'zoom': 1.0,
 }
 
+def log(msg):
+    if VERBOSE:
+        print msg
 
-def _slice_page(fname, index, verbose=False):
+
+def _slice_page(fname, index):
     "Call out to ImageMagick to convert a page into a PNG"
     fd, out_path = tempfile.mkstemp('.png', 'bocho-')
     os.close(fd)
@@ -32,8 +36,7 @@ def _slice_page(fname, index, verbose=False):
     command = command % (fname, index, out_path)
     sh_args = shlex.split(str(command))
 
-    if verbose:
-        print 'processing page %d: %s' % (index, command)
+    log('processing page %d: %s' % (index, command))
 
     ret = subprocess.call(sh_args)
 
@@ -47,9 +50,24 @@ def _slice_page(fname, index, verbose=False):
     return out_path
 
 
+def _add_border(img, fill='black', width=2):
+    draw = ImageDraw.Draw(img)
+
+    # four edges: [top, left, bottom, right]
+    xy_list = [
+        ((0, 0), (img.size[0], 0)),
+        ((0, 0), (0, img.size[1])),
+        ((0, img.size[1] - 2), (img.size[0], img.size[1] - 2)),
+        ((img.size[0] - 2, 0), (img.size[0] - 2, img.size[1])),
+    ]
+    for xy in xy_list:
+        log('drawing a line between %s and %s' % xy)
+        draw.line(xy, fill=fill, width=width)
+
+
 def bocho(fname, pages=None, width=None, height=None, angle=None,
           offset_x=None, offset_y=None, spacing=None, zoom=None,
-          reverse=False, verbose=False):
+          reverse=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
     height = height or DEFAULTS.get('height')
@@ -83,11 +101,10 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
         y_spacing = spacing * math.cos(angle)
         x_spacing = abs(y_spacing / math.tan(angle))
 
-    if verbose:
-        print 'spacing: %s' % str((x_spacing, y_spacing))
+    log('spacing: %s' % str((x_spacing, y_spacing)))
 
     page_images = [
-        Image.open(_slice_page(fname, x - 1, verbose)).convert('RGB')
+        Image.open(_slice_page(fname, x - 1)).convert('RGB')
         for x in pages
     ]
 
@@ -95,8 +112,7 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
     # the list
     page_size = page_images[0].size
     aspect = float(page_size[0]) / float(page_size[1])
-    if verbose:
-        print 'input document aspect ratio: 1:%s' % (1 / aspect)
+    log('input document aspect ratio: 1:%s' % (1 / aspect))
 
     # We make a bit of an assumption here that the output image is going to be
     # wider than it is tall and that by default we want the sliced pages to fit
@@ -128,30 +144,12 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
 
     outfile = Image.new('RGB', size)
 
-    if verbose:
-        print 'output size before rotating: %s' % str(size)
+    log('output size before rotating: %s' % str(size))
 
     for x, img in enumerate(reversed(page_images), 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
-        # Right-hand edges first (or left if we're reversed)...
-        draw = ImageDraw.Draw(img)
-        if reverse:
-            xy = ((0, 0), (0, img.size[1]))
-        else:
-            xy = ((img.size[0] - 2, 0), (img.size[0] - 2, img.size[1]))
-        if verbose:
-            print 'drawing a line between %s and %s' % xy
-        draw.line(xy, fill='black', width=2)
-
-        # ...then bottom (or top if reversed) edges.
-        if reverse:
-            xy = ((0, 0), (img.size[0], 0))
-        else:
-            xy = ((0, img.size[1] - 2), (img.size[0], img.size[1] - 2))
-        if verbose:
-            print 'drawing a line between %s and %s' % xy
-        draw.line(xy, fill='black', width=2)
+        _add_border(img)
 
         img = img.resize((int(page_width), page_height), Image.ANTIALIAS)
 
@@ -159,14 +157,12 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
             coords = (x_coords[x - 1], y_coords[x - 1])
         else:
             coords = (x_coords[-x], y_coords[-x])
-        if verbose:
-            print 'placing page %d at %s' % (pages[-x], coords)
+        log('placing page %d at %s' % (pages[-x], coords))
         outfile.paste(img, coords)
 
     if angle != 0:
         outfile = outfile.rotate(math.degrees(angle), Image.BILINEAR, True)
-        if verbose:
-            print 'output size before cropping: %s' % str(outfile.size)
+        log('output size before cropping: %s' % str(outfile.size))
 
         # Rotation is about the center (and expands to fit the result), so
         # cropping is simply a case of positioning a rectangle of the desired
@@ -180,6 +176,8 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
 
 
 if __name__ == '__main__':
+    global VERBOSE
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--width', type=int, nargs='?', default=DEFAULTS.get('width'),
@@ -216,8 +214,9 @@ if __name__ == '__main__':
     if not args.pdf_file[-4:] == '.pdf':
         raise Exception("Input file doesn't look like a PDF")
 
+    VERBOSE = args.verbose
+
     print bocho(
         args.pdf_file, args.pages, args.width, args.height, args.angle,
         args.offset_x, args.offset_y, args.spacing, args.zoom, args.reverse,
-        args.verbose,
     )

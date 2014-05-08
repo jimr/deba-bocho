@@ -37,6 +37,8 @@ TODO
 - horizontal and vertical offsets ✓
 - optional right-to-left stacking ✓
 - handle non-A4 aspect ratio input documents ✓
-- optionally apply a perspective transform
+- optionally apply transforms:
+  - affine ✓ (basic, non-configurable)
+  - perspective
 - ensure sliced PNGs are large enough when custom width / height are specified
 - docs

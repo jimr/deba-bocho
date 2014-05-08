@@ -27,6 +27,11 @@ def log(msg):
         print msg
 
 
+def px(number):
+    # Round a float & make it a valid pixel value. Bit more accurate than just int.
+    return int(round(number))
+
+
 def _slice_page(fname, index):
     "Call out to ImageMagick to convert a page into a PNG"
     fd, out_path = tempfile.mkstemp('.png', 'bocho-')
@@ -65,8 +70,8 @@ def _add_border(img, fill='black', width=2):
         draw.line(xy, fill=fill, width=width)
 
 
-def bocho(fname, pages=None, width=None, height=None, angle=None,
-          offset_x=None, offset_y=None, spacing=None, zoom=None,
+def bocho(fname, pages=None, width=None, height=None, offset_x=None,
+          offset_y=None, spacing=None, zoom=None, angle=None, affine=False,
           reverse=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
@@ -118,7 +123,7 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
     # wider than it is tall and that by default we want the sliced pages to fit
     # vertically (assuming no rotation) and that the spacing will fill the
     # image horizontally.
-    page_height = int(height * zoom)
+    page_height = px(height * zoom)
     page_width = page_height * aspect
 
     # If there's no angle specified then all the y coords will be zero and the
@@ -138,8 +143,8 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
         # the output image enough so everything still fits, but this bit we
         # need to figure out for ourselves in advance.
         size = (
-            int((page_width * n) - (page_width - x_spacing) * (n - 1)),
-            int(page_height + max(y_coords))
+            px((page_width * n) - (page_width - x_spacing) * (n - 1)),
+            px(page_height + max(y_coords))
         )
 
     outfile = Image.new('RGB', size)
@@ -151,7 +156,7 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
         # visual separation. Cheap drop-shadow basically.
         _add_border(img)
 
-        img = img.resize((int(page_width), page_height), Image.ANTIALIAS)
+        img = img.resize((px(page_width), page_height), Image.ANTIALIAS)
 
         if reverse:
             coords = (x_coords[x - 1], y_coords[x - 1])
@@ -161,14 +166,22 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
         outfile.paste(img, coords)
 
     if angle != 0:
+        if affine:
+            outfile = outfile.transform(
+                (px(outfile.size[0] * 1.5), outfile.size[1]),
+                Image.AFFINE,
+                (1, -0.5, 0, 0, 1, 0),
+                Image.BICUBIC,
+            )
+
         outfile = outfile.rotate(math.degrees(angle), Image.BILINEAR, True)
         log('output size before cropping: %s' % str(outfile.size))
 
         # Rotation is about the center (and expands to fit the result), so
         # cropping is simply a case of positioning a rectangle of the desired
         # width & height about the center of the rotated image.
-        left = int((outfile.size[0] - width) / 2) - offset_x
-        top = int((outfile.size[1] - height) / 2) - offset_y
+        left = px((outfile.size[0] - width) / 2) - offset_x
+        top = px((outfile.size[1] - height) / 2) - offset_y
         outfile = outfile.crop((left, top, left + width, top + height))
 
     outfile.save(file_path)
@@ -205,6 +218,9 @@ if __name__ == '__main__':
         '--reverse', action='store_true', default=False,
     )
     parser.add_argument(
+        '--affine', action='store_true', default=False,
+    )
+    parser.add_argument(
         '--verbose', action='store_true', default=False,
     )
     parser.add_argument('--pages', type=int, nargs='*')
@@ -217,6 +233,7 @@ if __name__ == '__main__':
     VERBOSE = args.verbose
 
     print bocho(
-        args.pdf_file, args.pages, args.width, args.height, args.angle,
-        args.offset_x, args.offset_y, args.spacing, args.zoom, args.reverse,
+        args.pdf_file, args.pages, args.width, args.height,
+        args.offset_x, args.offset_y, args.spacing,
+        args.zoom, args.angle, args.affine, args.reverse,
     )

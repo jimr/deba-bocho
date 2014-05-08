@@ -35,8 +35,9 @@ Pretty much everything.
 - allow a "zoom" option ✓
 - optional drop-shadows (and make right-edge black separators optional also)
 - automatic spacing as an option as well as fixed pixel spacing
+- horizontal and vertical spacing (currently only horizontal)
 - horizontal and vertical offsets ✓
 - optional right-to-left stacking
-- handle non-A4 aspect ratio input documents
+- handle non-A4 aspect ratio input documents ✓
 - ensure sliced PNGs are large enough when custom width / height are specified
 - docs

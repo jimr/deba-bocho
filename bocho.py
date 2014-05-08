@@ -22,8 +22,6 @@ DEFAULTS = {
     'zoom': 1.0,
 }
 
-ASPECT = 0.7  # approximate A4 aspect ratio
-
 
 def _slice_page(fname, index, verbose=False):
     "Call out to ImageMagick to convert a page into a PNG"
@@ -78,8 +76,6 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
         )
 
     n = len(pages)
-    page_height = int(height * zoom)
-    page_width = page_height * ASPECT
     x_spacing = spacing
     y_spacing = 0
 
@@ -94,6 +90,20 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
         Image.open(_slice_page(fname, x - 1, verbose)).convert('RGB')
         for x in pages
     ]
+
+    # Calculate the aspect ratio of the input document from the first page in
+    # the list
+    page_size = page_images[0].size
+    aspect = float(page_size[0]) / float(page_size[1])
+    if verbose:
+        print 'input document aspect ratio: 1:%s' % (1 / aspect)
+
+    # We make a bit of an assumption here that the output image is going to be
+    # wider than it is tall and that by default we want the sliced pages to fit
+    # vertically (assuming no rotation) and that the spacing will fill the
+    # image horizontally.
+    page_height = int(height * zoom)
+    page_width = page_height * aspect
 
     # If there's no angle specified then all the y coords will be zero and the
     # x coords will be a multiple of the provided spacing plus the offset.

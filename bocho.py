@@ -49,7 +49,7 @@ def _slice_page(fname, index, verbose=False):
 
 def bocho(fname, pages=None, width=None, height=None, angle=None,
           offset_x=None, offset_y=None, spacing=None, zoom=None,
-          verbose=False):
+          reverse=False, verbose=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
     height = height or DEFAULTS.get('height')
@@ -134,22 +134,31 @@ def bocho(fname, pages=None, width=None, height=None, angle=None,
     for x, img in enumerate(reversed(page_images), 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
-        # Right-hand edges first...
+        # Right-hand edges first (or left if we're reversed)...
         draw = ImageDraw.Draw(img)
-        xy = ((img.size[0] - 2, 0), (img.size[0] - 2, img.size[1]))
+        if reverse:
+            xy = ((0, 0), (0, img.size[1]))
+        else:
+            xy = ((img.size[0] - 2, 0), (img.size[0] - 2, img.size[1]))
         if verbose:
             print 'drawing a line between %s and %s' % xy
         draw.line(xy, fill='black', width=2)
 
-        # ...then bottom edges.
-        xy = ((0, img.size[1] - 2), (img.size[0], img.size[1] - 2))
+        # ...then bottom (or top if reversed) edges.
+        if reverse:
+            xy = ((0, 0), (img.size[0], 0))
+        else:
+            xy = ((0, img.size[1] - 2), (img.size[0], img.size[1] - 2))
         if verbose:
             print 'drawing a line between %s and %s' % xy
         draw.line(xy, fill='black', width=2)
 
         img = img.resize((int(page_width), page_height), Image.ANTIALIAS)
 
-        coords = (x_coords[-x], y_coords[-x])
+        if reverse:
+            coords = (x_coords[x - 1], y_coords[x - 1])
+        else:
+            coords = (x_coords[-x], y_coords[-x])
         if verbose:
             print 'placing page %d at %s' % (pages[-x], coords)
         outfile.paste(img, coords)
@@ -195,6 +204,9 @@ if __name__ == '__main__':
         '--zoom', type=float, nargs='?', default=DEFAULTS.get('zoom'),
     )
     parser.add_argument(
+        '--reverse', action='store_true', default=False,
+    )
+    parser.add_argument(
         '--verbose', action='store_true', default=False,
     )
     parser.add_argument('--pages', type=int, nargs='*')
@@ -206,5 +218,6 @@ if __name__ == '__main__':
 
     print bocho(
         args.pdf_file, args.pages, args.width, args.height, args.angle,
-        args.offset_x, args.offset_y, args.spacing, args.zoom, args.verbose,
+        args.offset_x, args.offset_y, args.spacing, args.zoom, args.reverse,
+        args.verbose,
     )

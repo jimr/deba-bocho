@@ -16,7 +16,8 @@ DEFAULTS = {
     'width': 630,  # pixels
     'height': 290,  # pixels
     'angle': 0,  # degrees anti-clockwise from vertical
-    'offset': 0,  # pixels
+    'offset_x': 0,  # pixels
+    'offset_y': 0,  # pixels
     'spacing': 107,  # pixels
     'zoom': 1.0,
 }
@@ -48,13 +49,15 @@ def _slice_page(fname, index, verbose=False):
     return out_path
 
 
-def bocho(fname, pages=None, width=None, height=None, angle=None, offset=None,
-          spacing=None, zoom=None, verbose=False):
+def bocho(fname, pages=None, width=None, height=None, angle=None,
+          offset_x=None, offset_y=None, spacing=None, zoom=None,
+          verbose=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
     height = height or DEFAULTS.get('height')
     angle = angle or DEFAULTS.get('angle')
-    offset = offset or DEFAULTS.get('offset')
+    offset_x = offset_x or DEFAULTS.get('offset_x')
+    offset_y = offset_y or DEFAULTS.get('offset_y')
     spacing = spacing or DEFAULTS.get('spacing')
     zoom = zoom or DEFAULTS.get('zoom')
 
@@ -94,7 +97,7 @@ def bocho(fname, pages=None, width=None, height=None, angle=None, offset=None,
 
     # If there's no angle specified then all the y coords will be zero and the
     # x coords will be a multiple of the provided spacing plus the offset.
-    x_coords = map(int, [offset + (i * x_spacing) for i in range(n)])
+    x_coords = map(int, [i * x_spacing for i in range(n)])
     y_coords = map(int, [i * y_spacing for i in range(n)])
 
     if angle < 0:
@@ -149,8 +152,8 @@ def bocho(fname, pages=None, width=None, height=None, angle=None, offset=None,
         # Rotation is about the center (and expands to fit the result), so
         # cropping is simply a case of positioning a rectangle of the desired
         # width & height about the center of the rotated image.
-        left = int((outfile.size[0] - width) / 2)
-        top = int((outfile.size[1] - height) / 2)
+        left = int((outfile.size[0] - width) / 2) - offset_x
+        top = int((outfile.size[1] - height) / 2) - offset_y
         outfile = outfile.crop((left, top, left + width, top + height))
 
     outfile.save(file_path)
@@ -170,7 +173,10 @@ if __name__ == '__main__':
         help='Angle of rotation (between -90 and 90 degrees)',
     )
     parser.add_argument(
-        '--offset', type=int, nargs='?', default=DEFAULTS.get('offset'),
+        '--offset_x', type=int, nargs='?', default=DEFAULTS.get('offset_x'),
+    )
+    parser.add_argument(
+        '--offset_y', type=int, nargs='?', default=DEFAULTS.get('offset_y'),
     )
     parser.add_argument(
         '--spacing', type=int, nargs='?', default=DEFAULTS.get('spacing'),
@@ -190,5 +196,5 @@ if __name__ == '__main__':
 
     print bocho(
         args.pdf_file, args.pages, args.width, args.height, args.angle,
-        args.offset, args.spacing, args.zoom, args.verbose,
+        args.offset_x, args.offset_y, args.spacing, args.zoom, args.verbose,
     )

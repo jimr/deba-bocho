@@ -29,8 +29,6 @@ On OS X, it's a bit more complicated::
 TODO
 ====
 
-Pretty much everything.
-
 - implement rotation properly ✓
 - allow a "zoom" option ✓
 - optional drop-shadows (and make the basic edge separators optional also)
@@ -39,5 +37,6 @@ Pretty much everything.
 - horizontal and vertical offsets ✓
 - optional right-to-left stacking ✓
 - handle non-A4 aspect ratio input documents ✓
+- optionally apply a perspective transform
 - ensure sliced PNGs are large enough when custom width / height are specified
 - docs

@@ -1,2 +1,2 @@
-pyPdf==1.13
-pillow==2.4.0
+pyPdf
+pillow

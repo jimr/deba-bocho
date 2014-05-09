@@ -21,6 +21,8 @@ DEFAULTS = {
     'zoom': 1.0,
 }
 
+VERBOSE = False
+
 
 def log(msg):
     if VERBOSE:
@@ -210,8 +212,6 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
 
 
 if __name__ == '__main__':
-    global VERBOSE
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--width', type=int, nargs='?', default=DEFAULTS.get('width'),

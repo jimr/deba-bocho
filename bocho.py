@@ -21,23 +21,24 @@ DEFAULTS = {
     'zoom': 1.0,
 }
 
+
 def log(msg):
     if VERBOSE:
         print msg
 
 
 def px(number):
-    # Round a float & make it a valid pixel value. Bit more accurate than just int.
+    # Round a float & make it a valid pixel value. More accurate than just int.
     return int(round(number))
 
 
-def _slice_page(fname, index):
+def _slice_page(fname, index, width, height):
     "Call out to ImageMagick to convert a page into a PNG"
     fd, out_path = tempfile.mkstemp('.png', 'bocho-')
     os.close(fd)
 
-    command = "convert -density 400 -scale 1200x1700 '%s[%d]' %s"
-    command = command % (fname, index, out_path)
+    command = "convert -density 400 -scale %dx%d '%s[%d]' %s"
+    command = command % (width, height, fname, index, out_path)
     sh_args = shlex.split(str(command))
 
     log('processing page %d: %s' % (index, command))
@@ -56,6 +57,8 @@ def _slice_page(fname, index):
 
 def _add_border(img, fill='black', width=2):
     draw = ImageDraw.Draw(img)
+
+    log('drawing borders on a page %dx%d' % img.size)
 
     # four edges: [top, left, bottom, right]
     xy_list = [
@@ -104,33 +107,48 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
 
     log('spacing: %s' % str((x_spacing, y_spacing)))
 
+    # Calculate the aspect ratio of the input document from the first page.
+    box = infile.getPage(0).cropBox
+    input_width = float(box.getWidth())
+    input_height = float(box.getHeight())
+    aspect = input_width / input_height
+
+    log('input document aspect ratio: 1:%s' % (1 / aspect))
+
     page_images = [
-        Image.open(_slice_page(fname, x - 1)).convert('RGB')
+        Image.open(_slice_page(
+            fname, x - 1, px(input_width * 2), px(input_height * 2),
+        )).convert('RGB')
         for x in pages
     ]
+    log('page size of sliced pages: %dx%d' % page_images[0].size)
 
-    # Calculate the aspect ratio of the input document from the first page in
-    # the list
-    page_size = page_images[0].size
-    aspect = float(page_size[0]) / float(page_size[1])
-    log('input document aspect ratio: 1:%s' % (1 / aspect))
+    slice_size = page_images[0].size
+    scale = slice_size[1] / height
+    log('input to output scale: %0.2f' % scale)
+
+    x_spacing = px(x_spacing * scale)
+    y_spacing = px(y_spacing * scale)
+    log('spacing after scaling up: %dx%d' % (x_spacing, y_spacing))
 
     # We make a bit of an assumption here that the output image is going to be
     # wider than it is tall and that by default we want the sliced pages to fit
     # vertically (assuming no rotation) and that the spacing will fill the
     # image horizontally.
-    page_height = px(height * zoom)
-    page_width = page_height * aspect
+    page_width = px(slice_size[0])
+    page_height = px(slice_size[1])
+    log('page size before resizing down: %dx%d' % (page_width, page_height))
 
     # If there's no angle specified then all the y coords will be zero and the
-    # x coords will be a multiple of the provided spacing plus the offset.
+    # x coords will be a multiple of the provided spacing
     x_coords = map(int, [i * x_spacing for i in range(n)])
     y_coords = map(int, [i * y_spacing for i in range(n)])
 
     if angle < 0:
         y_coords.sort(reverse=True)
 
-    size = (width, height)
+    size = (px(width * scale), px(height * scale))
+    log('output size before resizing: %dx%d' % size)
     if angle != 0:
         # If we're rotating the pages, we stack them up with appropriate
         # horizontal and vertical offsets first, then we rotate the result.
@@ -139,20 +157,18 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
         # the output image enough so everything still fits, but this bit we
         # need to figure out for ourselves in advance.
         size = (
-            px((page_width * n) - (page_width - x_spacing) * (n - 1)),
-            px(page_height + max(y_coords))
+            page_width + (n - 1) * x_spacing,
+            page_height + max(y_coords)
         )
+        log('output size before rotate + crop: %dx%d' % size)
 
     outfile = Image.new('RGB', size)
-
-    log('output size before rotating: %s' % str(size))
+    log('outfile dimensions: %dx%d' % outfile.size)
 
     for x, img in enumerate(reversed(page_images), 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
         _add_border(img)
-
-        img = img.resize((px(page_width), page_height), Image.ANTIALIAS)
 
         if reverse:
             coords = (x_coords[x - 1], y_coords[x - 1])
@@ -165,23 +181,31 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
         if affine:
             # Currently we just apply a non-configurable, subtle transform
             outfile = outfile.transform(
-                (px(outfile.size[0] * 1.5), outfile.size[1]),
+                (px(outfile.size[0] * 1.3), outfile.size[1]),
                 Image.AFFINE,
-                (1, -0.5, 0, 0, 1, 0),
+                (1, -0.3, 0, 0, 1, 0),
                 Image.BICUBIC,
             )
 
         outfile = outfile.rotate(math.degrees(angle), Image.BICUBIC, True)
-        log('output size before cropping: %s' % str(outfile.size))
+        log('output size before cropping: %dx%d' % outfile.size)
 
         # Rotation is about the center (and expands to fit the result), so
         # cropping is simply a case of positioning a rectangle of the desired
-        # width & height about the center of the rotated image.
-        left = px((outfile.size[0] - width) / 2) - offset[0]
-        top = px((outfile.size[1] - height) / 2) - offset[1]
-        outfile = outfile.crop((left, top, left + width, top + height))
+        # dimensions about the center of the rotated image.
+        delta = map(px, ((width * scale) / zoom, (height * scale) / zoom))
+        left = (outfile.size[0] - delta[0]) / 2 - (offset[0] * scale)
+        top = (outfile.size[1] - delta[1]) / 2 - (offset[1] * scale)
+        box = (left, top, left + delta[0], top + delta[1])
 
+        outfile = outfile.crop(box)
+        log('crop box: (%d, %d, %d, %d)' % box)
+
+    # Finally, resize the output to the desired size and save.
+    outfile = outfile.resize((width, height), Image.ANTIALIAS)
+    log('output saved with dimensions: %dx%d' % outfile.size)
     outfile.save(file_path)
+
     return file_path
 
 
@@ -200,16 +224,16 @@ if __name__ == '__main__':
         help='Angle of rotation (between -90 and 90 degrees)',
     )
     parser.add_argument(
-        '--offset_x', type=int, nargs='?', default=DEFAULTS.get('offset_x'),
+        '--offset_x', type=int, nargs='?', default=DEFAULTS.get('offset')[0],
     )
     parser.add_argument(
-        '--offset_y', type=int, nargs='?', default=DEFAULTS.get('offset_y'),
+        '--offset_y', type=int, nargs='?', default=DEFAULTS.get('offset')[1],
     )
     parser.add_argument(
-        '--spacing_x', type=int, nargs='?', default=DEFAULTS.get('spacing_y'),
+        '--spacing_x', type=int, nargs='?', default=DEFAULTS.get('spacing')[0],
     )
     parser.add_argument(
-        '--spacing_y', type=int, nargs='?', default=DEFAULTS.get('spacing_y'),
+        '--spacing_y', type=int, nargs='?', default=DEFAULTS.get('spacing')[1],
     )
     parser.add_argument(
         '--zoom', type=float, nargs='?', default=DEFAULTS.get('zoom'),

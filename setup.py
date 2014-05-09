@@ -11,7 +11,7 @@ except ImportError:
     install_requires.append('argparse')
 
 setup(
-    name='Deba bōchō',
+    name='deba-bocho',
     version='0.1',
     provides=['bocho'],
     description='Slice up PDFs like a pro.',
@@ -20,11 +20,13 @@ setup(
     author_email='jim@jimr.org',
     url='https://github.com/jimr/deba-bocho',
     classifiers=[
+        'Development Status :: 3 - Alpha',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
+        'Topic :: Multimedia :: Graphics :: Graphics Conversion',
         ],
     license='MIT',
     test_suite='tests',

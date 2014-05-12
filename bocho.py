@@ -3,13 +3,10 @@
 
 import argparse
 import math
-import shlex
 import os
-import subprocess
-import tempfile
 
-from pyPdf import PdfFileReader
 from PIL import Image, ImageDraw
+from wand.image import Image as WandImage
 
 DEFAULTS = {
     'pages': range(1, 6),
@@ -34,29 +31,6 @@ def px(number):
     return int(round(number))
 
 
-def _slice_page(fname, index, width, height):
-    "Call out to ImageMagick to convert a page into a PNG"
-    fd, out_path = tempfile.mkstemp('.png', 'bocho-')
-    os.close(fd)
-
-    command = "convert -density 400 -scale %dx%d '%s[%d]' %s"
-    command = command % (width, height, fname, index, out_path)
-    sh_args = shlex.split(str(command))
-
-    log('processing page %d: %s' % (index, command))
-
-    ret = subprocess.call(sh_args)
-
-    # Non-zero return code means failure.
-    if ret != 0:
-        raise Exception(
-            'Unable to generate PNG from page %d:\n  %s' %
-            (index, command)
-        )
-
-    return out_path
-
-
 def _add_border(img, fill='black', width=2):
     draw = ImageDraw.Draw(img)
 
@@ -73,9 +47,12 @@ def _add_border(img, fill='black', width=2):
         log('drawing a line between %s and %s' % xy)
         draw.line(xy, fill=fill, width=width)
 
+    return img
+
 
 def bocho(fname, pages=None, width=None, height=None, offset=None,
-          spacing=None, zoom=None, angle=None, affine=False, reverse=False):
+          spacing=None, zoom=None, angle=None, affine=False, reverse=False,
+          reuse=False):
     pages = pages or DEFAULTS.get('pages')
     width = width or DEFAULTS.get('width')
     height = height or DEFAULTS.get('height')
@@ -92,14 +69,6 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
     if os.path.exists(file_path):
         raise Exception("%s already exists, not overwriting" % file_path)
 
-    infile = PdfFileReader(file(fname, "rb"))
-
-    if any([x > infile.numPages for x in pages]):
-        raise Exception(
-            'Some pages are outside of the input document. '
-            '(it is %d pages long)' % infile.numPages
-        )
-
     n = len(pages)
     x_spacing, y_spacing = spacing
 
@@ -109,20 +78,29 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
 
     log('spacing: %s' % str((x_spacing, y_spacing)))
 
-    # Calculate the aspect ratio of the input document from the first page.
-    box = infile.getPage(0).cropBox
-    input_width = float(box.getWidth())
-    input_height = float(box.getHeight())
-    aspect = input_width / input_height
+    out_path = '%s-page.png' % fname[:-4]
+    tmp_image_names = ['%s-%d.png' % (out_path[:-4], p - 1) for p in pages]
 
-    log('input document aspect ratio: 1:%s' % (1 / aspect))
+    if all(map(os.path.exists, tmp_image_names)) and reuse:
+        log('re-using existing individual page PNGs')
+    else:
+        if any(map(os.path.exists, tmp_image_names)):
+            raise Exception(
+                'Error: not overwriting page PNG files, please delete: %s' %
+                tmp_image_names,
+            )
+        log('converting input PDF to individual page PDFs')
+        page_image_files = WandImage(
+            filename='%s[%s]' % (fname, ','.join(str(x - 1) for x in pages)),
+            resolution=300,
+        )
+        with page_image_files.convert('png') as f:
+            f.save(filename=out_path)
 
-    page_images = [
-        Image.open(_slice_page(
-            fname, x - 1, px(input_width * 2), px(input_height * 2),
-        )).convert('RGB')
-        for x in pages
-    ]
+    page_images = []
+    for tmp in tmp_image_names:
+        page_images.append(Image.open(tmp))
+
     log('page size of sliced pages: %dx%d' % page_images[0].size)
 
     slice_size = page_images[0].size
@@ -170,7 +148,7 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
     for x, img in enumerate(reversed(page_images), 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
-        _add_border(img)
+        img = _add_border(img)
 
         if reverse:
             coords = (x_coords[x - 1], y_coords[x - 1])
@@ -179,8 +157,16 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
         log('placing page %d at %s' % (pages[-x], coords))
         outfile.paste(img, coords)
 
+    if reuse:
+        log('leaving individual page PNG files in place')
+    else:
+        for tmp in tmp_image_names:
+            log('deleting temporary file: %s' % tmp)
+            os.remove(tmp)
+
     if angle != 0:
         if affine:
+            log('applying affine transformation')
             # Currently we just apply a non-configurable, subtle transform
             outfile = outfile.transform(
                 (px(outfile.size[0] * 1.3), outfile.size[1]),
@@ -189,6 +175,7 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
                 Image.BICUBIC,
             )
 
+        log('rotating image by %0.2f degrees' % math.degrees(angle))
         outfile = outfile.rotate(math.degrees(angle), Image.BICUBIC, True)
         log('output size before cropping: %dx%d' % outfile.size)
 
@@ -245,6 +232,12 @@ if __name__ == '__main__':
         '--affine', action='store_true', default=False,
     )
     parser.add_argument(
+        '--reuse', action='store_true', default=False,
+        help='Re-use page PNG files between runs. If True, you need to clear '
+             'up after yourself, but multiple runs on the same input will be '
+             'much faster.',
+    )
+    parser.add_argument(
         '--verbose', action='store_true', default=False,
     )
     parser.add_argument('--pages', type=int, nargs='*')
@@ -259,5 +252,5 @@ if __name__ == '__main__':
     print bocho(
         args.pdf_file, args.pages, args.width, args.height,
         (args.offset_x, args.offset_y), (args.spacing_x, args.spacing_y),
-        args.zoom, args.angle, args.affine, args.reverse,
+        args.zoom, args.angle, args.affine, args.reverse, args.reuse,
     )

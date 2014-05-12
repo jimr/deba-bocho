@@ -16,7 +16,7 @@ Installation
 
 Requires ImageMagick and the contents of ``requirements.txt``, e.g::
 
-    % sudo apt-get install imagemagick
+    % sudo apt-get install libmagickwand-dev
     % pip install -r requirements.txt
 
 On OS X, it's a bit more complicated::
@@ -47,4 +47,8 @@ TODO
 - if an angle is specified, apply the offsets after rotation, not before
 - allow transforms to be configurable (probably with presets defined in an
   ``.ini`` file)
+- drop the PyPDF dependency ✓
+- use an ImageMagick binding rather than using ``subprocess`` to call ``convert`` ✓
+- optionally re-use pages between runs ✓
+- allow user-specified resolution for the PDF to PNG conversion (default is 300 dpi)
 - docs

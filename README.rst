@@ -33,7 +33,7 @@ TODO
 - allow a "zoom" option ✓
 - optional drop-shadows (and make the basic edge separators optional also)
 - automatic spacing as an option as well as fixed pixel spacing
-- horizontal and vertical spacing (currently only horizontal)
+- horizontal and vertical spacing ✓
 - horizontal and vertical offsets ✓
 - optional right-to-left stacking ✓
 - handle non-A4 aspect ratio input documents ✓

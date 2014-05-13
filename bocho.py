@@ -5,7 +5,7 @@ import argparse
 import math
 import os
 
-from PIL import Image, ImageDraw
+from PIL import Image
 from wand.image import Image as WandImage
 
 DEFAULTS = {
@@ -32,22 +32,13 @@ def px(number):
 
 
 def _add_border(img, fill='black', width=2):
-    draw = ImageDraw.Draw(img)
-
     log('drawing borders on a page %dx%d' % img.size)
+    border_background = Image.new(
+        'RGBA', (img.size[0] + width, img.size[1] + width), color=fill,
+    )
+    border_background.paste(img, (width, width))
 
-    # four edges: [top, left, bottom, right]
-    xy_list = [
-        ((0, 0), (img.size[0], 0)),
-        ((0, 0), (0, img.size[1])),
-        ((0, img.size[1] - 2), (img.size[0], img.size[1] - 2)),
-        ((img.size[0] - 2, 0), (img.size[0] - 2, img.size[1])),
-    ]
-    for xy in xy_list:
-        log('drawing a line between %s and %s' % xy)
-        draw.line(xy, fill=fill, width=width)
-
-    return img
+    return border_background
 
 
 def bocho(fname, pages=None, width=None, height=None, offset=None,

@@ -45,10 +45,10 @@ TODO
 - ensure sliced PNGs are large enough when custom width / height are specified
 - fix x and y spacing calculation to account for any applied transformations
 - if an angle is specified, apply the offsets after rotation, not before
-- allow transforms to be configurable (probably with presets defined in an
-  ``.ini`` file)
+- allow transforms to be configurable (probably with presets defined in an ``.ini`` file)
 - drop the PyPDF dependency ✓
-- use an ImageMagick binding rather than using ``subprocess`` to call ``convert`` ✓
+- use an ImageMagick binding rather than using ``subprocess`` to call ``convert`` ✓ (Wand)
 - optionally re-use pages between runs ✓
-- allow user-specified resolution for the PDF to PNG conversion (default is 300 dpi)
-- docs
+- allow user-specified resolution for the PDF to PNG conversion ✓
+- docs ✓
+- pretty pictures illustrating the effect of the various options

@@ -16,6 +16,12 @@ DEFAULTS = {
     'offset': (0, 0),  # pixels
     'spacing': (107, 0),  # pixels
     'zoom': 1.0,
+    'border': 2,  # pixels
+    'affine': False,
+    'reverse': False,
+    'reuse': False,
+    'delete': False,
+    'resolution': 300,  # dpi
 }
 
 VERBOSE = False
@@ -32,25 +38,69 @@ def px(number):
 
 
 def _add_border(img, fill='black', width=2):
+    if not width or width < 0:
+        return img
+
     log('drawing borders on a page %dx%d' % img.size)
     border_background = Image.new(
-        'RGBA', (img.size[0] + width, img.size[1] + width), color=fill,
+        'RGBA', (img.size[0] + width * 2, img.size[1] + width * 2), color=fill,
     )
     border_background.paste(img, (width, width))
 
     return border_background
 
 
-def bocho(fname, pages=None, width=None, height=None, offset=None,
-          spacing=None, zoom=None, angle=None, affine=False, reverse=False,
-          reuse=False):
-    pages = pages or DEFAULTS.get('pages')
-    width = width or DEFAULTS.get('width')
-    height = height or DEFAULTS.get('height')
-    angle = angle or DEFAULTS.get('angle')
-    offset = offset or DEFAULTS.get('offset')
-    spacing = spacing or DEFAULTS.get('spacing')
-    zoom = zoom or DEFAULTS.get('zoom')
+def bocho(fname, **kwargs):
+    """Slice the given file name into page thumbnails and arrange as a preview.
+
+    The only required input is the path to the input file, all other parameters
+    have sensible defaults (see ``bocho.DEFAULTS``).
+
+    Per-page PNG files can optionally be re-used between runs, but the output
+    file must be removed or we will raise an exception unless you pass
+    ``delete=True``.
+
+    Args:
+        fname (str): The input file name
+
+    Kwargs:
+        pages (list): Pages to use from the source file
+        width (int): pixel width of the output image
+        height (int): pixel height of the output image
+        resolution (int): DPI used in converting PDF pages to PNG
+        angle (int): rotation from vertical (degrees between -90 and 90)
+        offset (tuple): two-tuple of (x, y) pixel offsets for shifting the output
+        spacing (tuple): two-tuple of (x, y) pixel spacing between pages
+        zoom: (tuple) zoom factor to be applied after arranging pages
+        border (int): pixel width of the page border to be added
+        affine (bool): optionally apply a subtle affine transformation
+        reverse (bool): stack the pages right to left
+        reuse (bool): re-use the per-page PNG files between runs 
+        delete (bool): delete the output file before running
+
+    Returns:
+        string. The path to the output file
+    
+    """
+    def _kwarg_or_default(name):
+        result = kwargs.get(name)
+        if result is None:
+            result = DEFAULTS.get(name)
+        return result
+
+    pages = _kwarg_or_default('pages')
+    width = _kwarg_or_default('width')
+    height = _kwarg_or_default('height')
+    resolution = _kwarg_or_default('resolution')
+    angle = _kwarg_or_default('angle')
+    offset = _kwarg_or_default('offset')
+    spacing = _kwarg_or_default('spacing')
+    zoom = _kwarg_or_default('zoom')
+    border = _kwarg_or_default('border')
+    affine = _kwarg_or_default('affine')
+    reverse = _kwarg_or_default('reverse')
+    reuse = _kwarg_or_default('reuse')
+    delete = _kwarg_or_default('delete')
 
     assert -90 <= angle <= 90
 
@@ -58,7 +108,11 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
 
     file_path = '%s-bocho-%sx%s.png' % (fname[:-4], width, height)
     if os.path.exists(file_path):
-        raise Exception("%s already exists, not overwriting" % file_path)
+        if not delete:
+            raise Exception("%s already exists, not overwriting" % file_path)
+        else:
+            log('removing output file before running: %s' % file_path)
+            os.remove(file_path)
 
     n = len(pages)
     x_spacing, y_spacing = spacing
@@ -76,14 +130,19 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
         log('re-using existing individual page PNGs')
     else:
         if any(map(os.path.exists, tmp_image_names)):
-            raise Exception(
-                'Error: not overwriting page PNG files, please delete: %s' %
-                tmp_image_names,
-            )
+            if delete:
+                for path in tmp_image_names:
+                    if os.path.exists(path):
+                        os.remove(path)
+            else:
+                raise Exception(
+                    'Error: not overwriting page PNG files, please delete: %s' %
+                    tmp_image_names,
+                )
         log('converting input PDF to individual page PDFs')
         page_image_files = WandImage(
             filename='%s[%s]' % (fname, ','.join(str(x - 1) for x in pages)),
-            resolution=300,
+            resolution=resolution,
         )
         with page_image_files.convert('png') as f:
             f.save(filename=out_path)
@@ -139,7 +198,7 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
     for x, img in enumerate(reversed(page_images), 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
-        img = _add_border(img)
+        img = _add_border(img, width=border)
 
         if reverse:
             coords = (x_coords[x - 1], y_coords[x - 1])
@@ -191,48 +250,35 @@ def bocho(fname, pages=None, width=None, height=None, offset=None,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('pdf_file')
+    parser.add_argument('--pages', type=int, nargs='*')
+    parser.add_argument('--width', type=int, nargs='?')
+    parser.add_argument('--height', type=int, nargs='?')
+    parser.add_argument('--resolution', type=int, nargs='?')
     parser.add_argument(
-        '--width', type=int, nargs='?', default=DEFAULTS.get('width'),
-    )
-    parser.add_argument(
-        '--height', type=int, nargs='?', default=DEFAULTS.get('height'),
-    )
-    parser.add_argument(
-        '--angle', type=int, nargs='?', default=DEFAULTS.get('angle'),
+        '--angle', type=int, nargs='?',
         help='Angle of rotation (between -90 and 90 degrees)',
     )
+    parser.add_argument('--offset_x', type=int, nargs='?')
+    parser.add_argument('--offset_y', type=int, nargs='?')
+    parser.add_argument('--spacing_x', type=int, nargs='?')
+    parser.add_argument('--spacing_y', type=int, nargs='?')
+    parser.add_argument('--zoom', type=float, nargs='?')
+    parser.add_argument('--reverse', action='store_true')
+    parser.add_argument('--border', type=int, nargs='?')
+    parser.add_argument('--affine', action='store_true')
     parser.add_argument(
-        '--offset_x', type=int, nargs='?', default=DEFAULTS.get('offset')[0],
-    )
-    parser.add_argument(
-        '--offset_y', type=int, nargs='?', default=DEFAULTS.get('offset')[1],
-    )
-    parser.add_argument(
-        '--spacing_x', type=int, nargs='?', default=DEFAULTS.get('spacing')[0],
-    )
-    parser.add_argument(
-        '--spacing_y', type=int, nargs='?', default=DEFAULTS.get('spacing')[1],
-    )
-    parser.add_argument(
-        '--zoom', type=float, nargs='?', default=DEFAULTS.get('zoom'),
-    )
-    parser.add_argument(
-        '--reverse', action='store_true', default=False,
-    )
-    parser.add_argument(
-        '--affine', action='store_true', default=False,
-    )
-    parser.add_argument(
-        '--reuse', action='store_true', default=False,
+        '--reuse', action='store_true',
         help='Re-use page PNG files between runs. If True, you need to clear '
              'up after yourself, but multiple runs on the same input will be '
              'much faster.',
     )
     parser.add_argument(
-        '--verbose', action='store_true', default=False,
+        '--delete', action='store_true',
+        help='Delete the output file before running. If False, and the file '
+             'exists, an exception will be raised and nothing will happen.',
     )
-    parser.add_argument('--pages', type=int, nargs='*')
-    parser.add_argument('pdf_file')
+    parser.add_argument('--verbose', action='store_true', default=False)
     args = parser.parse_args()
 
     if not args.pdf_file[-4:] == '.pdf':
@@ -240,8 +286,8 @@ if __name__ == '__main__':
 
     VERBOSE = args.verbose
 
-    print bocho(
-        args.pdf_file, args.pages, args.width, args.height,
-        (args.offset_x, args.offset_y), (args.spacing_x, args.spacing_y),
-        args.zoom, args.angle, args.affine, args.reverse, args.reuse,
-    )
+    kwargs = dict(args._get_kwargs())
+    offset = (kwargs.pop('offset_x'), kwargs.pop('offset_y'))
+    spacing = (kwargs.pop('spacing_x'), kwargs.pop('spacing_y'))
+
+    print bocho(args.pdf_file, offset=offset, spacing=spacing, **kwargs)

@@ -53,8 +53,8 @@ def _add_border(img, fill='black', width=2):
 def bocho(fname, **kwargs):
     """Slice the given file name into page thumbnails and arrange as a preview.
 
-    The only required input is the path to the input file, all other parameters
-    have sensible defaults (see ``bocho.DEFAULTS``).
+    The only required information is the path to the input file, all other
+    parameters have sensible defaults (see ``bocho.DEFAULTS``).
 
     Per-page PNG files can optionally be re-used between runs, but the output
     file must be removed or we will raise an exception unless you pass

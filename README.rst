@@ -31,7 +31,8 @@ TODO
 
 - implement rotation properly ✓
 - allow a "zoom" option ✓
-- optional drop-shadows (and make the basic edge separators optional also)
+- optional drop-shadows
+- make the basic edge separators optional ✓
 - automatic spacing as an option as well as fixed pixel spacing
 - horizontal and vertical spacing ✓
 - horizontal and vertical offsets ✓
@@ -43,8 +44,7 @@ TODO
   - perspective
 
 - ensure sliced PNGs are large enough when custom width / height are specified
-- fix x and y spacing calculation to account for any applied transformations
-- if an angle is specified, apply the offsets after rotation, not before
+- fix x and y spacing calculation to account for any applied rotation & transformation
 - allow transforms to be configurable (probably with presets defined in an ``.ini`` file)
 - drop the PyPDF dependency ✓
 - use an ImageMagick binding rather than using ``subprocess`` to call ``convert`` ✓ (Wand)

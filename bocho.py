@@ -17,6 +17,7 @@ DEFAULTS = {
     'spacing': (107, 0),  # pixels
     'zoom': 1.0,
     'border': 2,  # pixels
+    'shadow': False,
     'affine': False,
     'reverse': False,
     'reuse': False,
@@ -37,17 +38,55 @@ def px(number):
     return int(round(number))
 
 
-def _add_border(img, fill='black', width=2):
+def _add_border(img, fill='black', width=2, shadow=False):
     if not width or width < 0:
         return img
 
     log('drawing borders on a page %dx%d' % img.size)
-    border_background = Image.new(
-        'RGBA', (img.size[0] + width * 2, img.size[1] + width * 2), color=fill,
+    new_img = Image.new(
+        'RGBA', (img.size[0] + width * 2, img.size[1] + width * 2), fill,
     )
-    border_background.paste(img, (width, width))
 
-    return border_background
+    def _pixel_in_border(x, y):
+        return (
+            y < width
+            or x < width
+            or y > img.size[1] + width
+            or x > img.size[0] + width
+        )
+
+    def _pixel_in_outer_border(x, y):
+        return (
+            y < width / 2
+            or x < width / 2
+            or y > img.size[1] + width * 1.5
+            or x > img.size[0] + width * 1.5
+        )
+
+    if shadow:
+        # Here, we split the black border into two equal parts - inner and
+        # outer - and make the outer one translucent and the inner one slightly
+        # less translucent. The net effect is to soften the borders a bit.
+        p = new_img.load()
+        for y in range(new_img.size[1]):
+            for x in range(new_img.size[0]):
+                pixel = list(p[x, y])
+                if _pixel_in_border(x, y):
+                    # Outer border is slightly more translucent than the inner
+                    if _pixel_in_outer_border(x, y):
+                        pixel[3] = 100
+                        p[x, y] = tuple(pixel)
+                    else:
+                        pixel[3] = 140
+                        p[x, y] = tuple(pixel)
+    else:
+        # If we're not adding a shadow effect, we just ditch the alpha layer
+        # and make the background pure black.
+        new_img.putalpha(255)
+
+    new_img.paste(img, (width, width), img)
+
+    return new_img
 
 
 def bocho(fname, **kwargs):
@@ -69,18 +108,19 @@ def bocho(fname, **kwargs):
         height (int): pixel height of the output image
         resolution (int): DPI used in converting PDF pages to PNG
         angle (int): rotation from vertical (degrees between -90 and 90)
-        offset (tuple): two-tuple of (x, y) pixel offsets for shifting the output
-        spacing (tuple): two-tuple of (x, y) pixel spacing between pages
+        offset (tuple): two-tuple of pixel offsets for shifting the output
+        spacing (tuple): two-tuple of pixel spacing between pages
         zoom: (tuple) zoom factor to be applied after arranging pages
         border (int): pixel width of the page border to be added
+        shadow (bool): soften the border for a 'shadow' effect (slow)
         affine (bool): optionally apply a subtle affine transformation
         reverse (bool): stack the pages right to left
-        reuse (bool): re-use the per-page PNG files between runs 
+        reuse (bool): re-use the per-page PNG files between runs
         delete (bool): delete the output file before running
 
     Returns:
         string. The path to the output file
-    
+
     """
     def _kwarg_or_default(name):
         result = kwargs.get(name)
@@ -97,6 +137,7 @@ def bocho(fname, **kwargs):
     spacing = _kwarg_or_default('spacing')
     zoom = _kwarg_or_default('zoom')
     border = _kwarg_or_default('border')
+    shadow = _kwarg_or_default('shadow')
     affine = _kwarg_or_default('affine')
     reverse = _kwarg_or_default('reverse')
     reuse = _kwarg_or_default('reuse')
@@ -136,7 +177,7 @@ def bocho(fname, **kwargs):
                         os.remove(path)
             else:
                 raise Exception(
-                    'Error: not overwriting page PNG files, please delete: %s' %
+                    'Not overwriting page PNG files, please delete: %s' %
                     tmp_image_names,
                 )
         log('converting input PDF to individual page PDFs')
@@ -198,14 +239,17 @@ def bocho(fname, **kwargs):
     for x, img in enumerate(reversed(page_images), 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
-        img = _add_border(img, width=border)
+        img.putalpha(255)
+        img = _add_border(img, width=border, shadow=shadow)
 
         if reverse:
             coords = (x_coords[x - 1], y_coords[x - 1])
         else:
             coords = (x_coords[-x], y_coords[-x])
+
+        # If we don't use img as the mask, PIL drops the alpha channel
         log('placing page %d at %s' % (pages[-x], coords))
-        outfile.paste(img, coords)
+        outfile.paste(img, coords, img)
 
     if reuse:
         log('leaving individual page PNG files in place')
@@ -265,6 +309,7 @@ if __name__ == '__main__':
     parser.add_argument('--zoom', type=float, nargs='?')
     parser.add_argument('--reverse', action='store_true')
     parser.add_argument('--border', type=int, nargs='?')
+    parser.add_argument('--shadow', action='store_true')
     parser.add_argument('--affine', action='store_true')
     parser.add_argument(
         '--reuse', action='store_true',

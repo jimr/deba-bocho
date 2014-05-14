@@ -31,7 +31,8 @@ TODO
 
 - implement rotation properly ✓
 - allow a "zoom" option ✓
-- optional drop-shadows
+- optional drop-shadows ✓
+- make shadows smarter in their orientation (they're currently uniform, not respecting the angle / affine transformation)
 - make the basic edge separators optional ✓
 - automatic spacing as an option as well as fixed pixel spacing
 - horizontal and vertical spacing ✓

@@ -12,7 +12,7 @@ except ImportError:
 
 setup(
     name='deba-bocho',
-    version='0.1.4',
+    version='0.2.0',
     provides=['bocho'],
     description='Slice up PDFs like a pro.',
     long_description=open('README.rst').read(),

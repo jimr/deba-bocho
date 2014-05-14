@@ -14,17 +14,22 @@ It accepts a bunch of options for customising the output (pass the ``-h`` flag f
 Installation
 ============
 
-Requires ImageMagick and the contents of ``requirements.txt``, e.g::
+``pip install deba-bocho``.
+
+Requires ImageMagick so you might need to, e.g:
+
+    % sudo apt-get install imagemagick
+
+If you want to use ``Wand`` instead of calling ``convert`` directly, you'll also need to perform some some additional steps, e.g::
 
     % sudo apt-get install libmagickwand-dev
-    % pip install -r requirements.txt
+    % pip install wand
 
-On OS X, it's a bit more complicated::
+See their installation instructions for more details.
 
-    % brew install ghostscript
-    % brew install imagemagick
-    % ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --allow-external pyPdf --allow-unverified pyPdf -r requirements.txt
+On OS X, you'll want to use Homebrew to get the low-level dependencies in place::
 
+    % brew install ghostscript imagemagick
 
 TODO
 ====

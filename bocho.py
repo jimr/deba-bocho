@@ -2,10 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import glob
 import math
 import os
+import shlex
+import subprocess
+import tempfile
 
 from PIL import Image
+
+try:
+    import wand
+    WAND_AVAILABLE = True
+except ImportError:
+    WAND_AVAILABLE = False
 
 DEFAULTS = {
     'pages': range(1, 6),
@@ -37,10 +47,45 @@ def px(number):
     return int(round(number))
 
 
-def _slice_pages(fname, out_path, resolution, use_convert):
-    if use_convert:
-        import subprocess
-        import shlex
+def slice_pages(fname, pages, out_path=None, resolution=300, use_convert=True):
+    """Use ImageMagick to slice the PDF into individual PNG pages.
+
+    For example::
+
+        >>> from bocho import slice_pages
+        >>> pngs = slice_pages('/path/to/my-file.pdf', [1,2,3])
+        >>> print pngs
+        [
+            '/path/to/my-file-Gq_Yw1-1.png',
+            '/path/to/my-file-Gq_Yw1-2.png',
+            '/path/to/my-file-Gq_Yw1-3.png',
+        ]
+
+    If ``out_path`` isn't provided, we use the :mod:`tempfile` module to
+    generate one.
+
+    Args:
+        fname (str): The PDF to split
+        pages (list): Pages to slice
+
+    Kwargs:
+        out_path (str): Output file name format (passed to ImageMagick)
+        resolution (int): Required DPI (passed to ImageMagick)
+        use_convert (bool): If False, we use Wand (if available)
+
+    Returns:
+        list: Paths to page PNG files
+
+    """
+    if not out_path:
+        prefix = '%s-' % fname[:-4]
+        fd, out_path = tempfile.mkstemp(prefix=prefix, suffix='.png')
+        os.close(fd)
+        os.remove(out_path)
+
+    fname = '%s[%s]' % (fname, ','.join(str(x - 1) for x in pages))
+
+    if use_convert or not WAND_AVAILABLE:
         command = "convert -density %d '%s' %s"
         command = command % (resolution, fname, out_path)
         sh_args = shlex.split(str(command))
@@ -55,6 +100,8 @@ def _slice_pages(fname, out_path, resolution, use_convert):
         )
         with page_image_files.convert('png') as f:
             f.save(filename=out_path)
+
+    return glob.glob('%s*' % out_path[:-4])
 
 
 def _add_border(img, fill='black', width=2, shadow=False):
@@ -164,6 +211,10 @@ def bocho(fname, **kwargs):
     delete = _kwarg_or_default('delete')
     use_convert = _kwarg_or_default('use_convert')
 
+    if not use_convert and not WAND_AVAILABLE:
+        log('Wand is not installed, so using `convert` directly.')
+        use_convert = True
+
     assert -90 <= angle <= 90
 
     angle = math.radians(angle)
@@ -202,12 +253,7 @@ def bocho(fname, **kwargs):
                     tmp_image_names,
                 )
         log('converting input PDF to individual page PDFs')
-        _slice_pages(
-            '%s[%s]' % (fname, ','.join(str(x - 1) for x in pages)),
-            out_path,
-            resolution,
-            use_convert,
-        )
+        slice_pages(fname, pages, out_path, resolution, use_convert)
 
     page_0 = Image.open(tmp_image_names[0])
     log('page size of sliced pages: %dx%d' % page_0.size)

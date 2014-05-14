@@ -12,7 +12,7 @@ except ImportError:
 
 setup(
     name='deba-bocho',
-    version='0.2.2',
+    version='0.3.0',
     provides=['bocho'],
     description='Slice up PDFs like a pro.',
     long_description=open('README.rst').read(),
@@ -20,7 +20,7 @@ setup(
     author_email='jim@jimr.org',
     url='https://github.com/jimr/deba-bocho',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',

@@ -287,7 +287,13 @@ if __name__ == '__main__':
     VERBOSE = args.verbose
 
     kwargs = dict(args._get_kwargs())
-    offset = (kwargs.pop('offset_x'), kwargs.pop('offset_y'))
-    spacing = (kwargs.pop('spacing_x'), kwargs.pop('spacing_y'))
+    offset = (
+        kwargs.pop('offset_x') or DEFAULTS.get('offset')[0],
+        kwargs.pop('offset_y') or DEFAULTS.get('offset')[1]
+    )
+    spacing = (
+        kwargs.pop('spacing_x') or DEFAULTS.get('spacing')[0],
+        kwargs.pop('spacing_y') or DEFAULTS.get('spacing')[1]
+    )
 
     print bocho(args.pdf_file, offset=offset, spacing=spacing, **kwargs)

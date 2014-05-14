@@ -7,7 +7,7 @@ Slice up PDFs like a pro::
     % python bocho.py my-fancy-file.pdf --pages 1 3 5 6 10 --angle 30 --zoom 1.6
     my-fancy-file-bocho-630x290.png
 
-``bocho`` takes a PDF file and creates a "stacked page" preview from a selection of pages.
+Takes a PDF file and creates a "stacked page" preview from a selection of pages.
 
 It accepts a bunch of options for customising the output (pass the ``-h`` flag for details).
 
@@ -16,7 +16,7 @@ Installation
 
 ``pip install deba-bocho``.
 
-Requires ImageMagick so you might need to, e.g:
+Requires ImageMagick so you might need to, e.g::
 
     % sudo apt-get install imagemagick
 

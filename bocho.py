@@ -214,31 +214,30 @@ def bocho(fname, **kwargs):
             log('deleting temporary file: %s' % tmp)
             os.remove(tmp)
 
-    if angle != 0:
-        if affine:
-            log('applying affine transformation')
-            # Currently we just apply a non-configurable, subtle transform
-            outfile = outfile.transform(
-                (px(outfile.size[0] * 1.3), outfile.size[1]),
-                Image.AFFINE,
-                (1, -0.3, 0, 0, 1, 0),
-                Image.BICUBIC,
-            )
+    if affine:
+        log('applying affine transformation')
+        # Currently we just apply a non-configurable, subtle transform
+        outfile = outfile.transform(
+            (px(outfile.size[0] * 1.3), outfile.size[1]),
+            Image.AFFINE,
+            (1, -0.3, 0, 0, 1, 0),
+            Image.BICUBIC,
+        )
 
+    if angle != 0:
         log('rotating image by %0.2f degrees' % math.degrees(angle))
         outfile = outfile.rotate(math.degrees(angle), Image.BICUBIC, True)
         log('output size before cropping: %dx%d' % outfile.size)
 
-        # Rotation is about the center (and expands to fit the result), so
-        # cropping is simply a case of positioning a rectangle of the desired
-        # dimensions about the center of the rotated image.
-        delta = map(px, ((width * scale) / zoom, (height * scale) / zoom))
-        left = (outfile.size[0] - delta[0]) / 2 - (offset[0] * scale)
-        top = (outfile.size[1] - delta[1]) / 2 - (offset[1] * scale)
-        box = (left, top, left + delta[0], top + delta[1])
+    # Cropping is simply a case of positioning a rectangle of the desired
+    # dimensions about the center of the image.
+    delta = map(px, ((width * scale) / zoom, (height * scale) / zoom))
+    left = (outfile.size[0] - delta[0]) / 2 - (offset[0] * scale)
+    top = (outfile.size[1] - delta[1]) / 2 - (offset[1] * scale)
+    box = (left, top, left + delta[0], top + delta[1])
 
-        outfile = outfile.crop(box)
-        log('crop box: (%d, %d, %d, %d)' % box)
+    outfile = outfile.crop(box)
+    log('crop box: (%d, %d, %d, %d)' % box)
 
     # Finally, resize the output to the desired size and save.
     outfile = outfile.resize((width, height), Image.ANTIALIAS)

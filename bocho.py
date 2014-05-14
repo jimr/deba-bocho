@@ -6,7 +6,6 @@ import math
 import os
 
 from PIL import Image
-from wand.image import Image as WandImage
 
 DEFAULTS = {
     'pages': range(1, 6),
@@ -36,6 +35,26 @@ def log(msg):
 def px(number):
     # Round a float & make it a valid pixel value. More accurate than just int.
     return int(round(number))
+
+
+def _slice_pages(fname, out_path, resolution, use_convert):
+    if use_convert:
+        import subprocess
+        import shlex
+        command = "convert -density %d '%s' %s"
+        command = command % (resolution, fname, out_path)
+        sh_args = shlex.split(str(command))
+        ret = subprocess.call(sh_args)
+        if ret > 0:
+            raise Exception('Non-zero return code: "%s"' % command)
+    else:
+        from wand import image
+        page_image_files = image.Image(
+            filename=fname,
+            resolution=resolution,
+        )
+        with page_image_files.convert('png') as f:
+            f.save(filename=out_path)
 
 
 def _add_border(img, fill='black', width=2, shadow=False):
@@ -117,6 +136,7 @@ def bocho(fname, **kwargs):
         reverse (bool): stack the pages right to left
         reuse (bool): re-use the per-page PNG files between runs
         delete (bool): delete the output file before running
+        use_convert (bool): optionally use 'convert' rather than Wand
 
     Returns:
         string. The path to the output file
@@ -142,6 +162,7 @@ def bocho(fname, **kwargs):
     reverse = _kwarg_or_default('reverse')
     reuse = _kwarg_or_default('reuse')
     delete = _kwarg_or_default('delete')
+    use_convert = _kwarg_or_default('use_convert')
 
     assert -90 <= angle <= 90
 
@@ -181,12 +202,12 @@ def bocho(fname, **kwargs):
                     tmp_image_names,
                 )
         log('converting input PDF to individual page PDFs')
-        page_image_files = WandImage(
-            filename='%s[%s]' % (fname, ','.join(str(x - 1) for x in pages)),
-            resolution=resolution,
+        _slice_pages(
+            '%s[%s]' % (fname, ','.join(str(x - 1) for x in pages)),
+            out_path,
+            resolution,
+            use_convert,
         )
-        with page_image_files.convert('png') as f:
-            f.save(filename=out_path)
 
     page_images = []
     for tmp in tmp_image_names:
@@ -311,6 +332,7 @@ if __name__ == '__main__':
     parser.add_argument('--border', type=int, nargs='?')
     parser.add_argument('--shadow', action='store_true')
     parser.add_argument('--affine', action='store_true')
+    parser.add_argument('--use_convert', action='store_true')
     parser.add_argument(
         '--reuse', action='store_true',
         help='Re-use page PNG files between runs. If True, you need to clear '

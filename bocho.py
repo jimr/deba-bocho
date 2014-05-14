@@ -209,13 +209,10 @@ def bocho(fname, **kwargs):
             use_convert,
         )
 
-    page_images = []
-    for tmp in tmp_image_names:
-        page_images.append(Image.open(tmp))
+    page_0 = Image.open(tmp_image_names[0])
+    log('page size of sliced pages: %dx%d' % page_0.size)
 
-    log('page size of sliced pages: %dx%d' % page_images[0].size)
-
-    slice_size = page_images[0].size
+    slice_size = page_0.size
     scale = slice_size[1] / height
     log('input to output scale: %0.2f' % scale)
 
@@ -257,9 +254,10 @@ def bocho(fname, **kwargs):
     outfile = Image.new('RGB', size)
     log('outfile dimensions: %dx%d' % outfile.size)
 
-    for x, img in enumerate(reversed(page_images), 1):
+    for x, tmp in enumerate(reversed(tmp_image_names), 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
+        img = Image.open(tmp)
         img.putalpha(255)
         img = _add_border(img, width=border, shadow=shadow)
 
@@ -271,6 +269,8 @@ def bocho(fname, **kwargs):
         # If we don't use img as the mask, PIL drops the alpha channel
         log('placing page %d at %s' % (pages[-x], coords))
         outfile.paste(img, coords, img)
+
+    del page_0, img
 
     if reuse:
         log('leaving individual page PNG files in place')

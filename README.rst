@@ -31,6 +31,28 @@ On OS X, you'll want to use Homebrew to get the low-level dependencies in place:
 
 Once all that's sorted, you just need to ``pip install deba-bocho``.
 
+PyPy: Oh My!
+============
+
+For simple operations, there's not much difference in performance between CPython and PyPy.
+If you want to use the ``shadow`` effect, it's a different matter.
+Cue unscientific benchmarking run on my laptop...
+
+Python 2.7::
+
+    % time bocho /tmp/report.pdf --preset example --shadow
+    ...
+    bocho /tmp/report.pdf --preset example --shadow  35.89s user 0.15s system 99% cpu 36.132 total
+
+PyPy::
+
+    % time bocho /tmp/report.pdf --preset example --shadow
+    ...
+    bocho /tmp/report.pdf --preset example --shadow  4.10s user 0.18s system 99% cpu 4.297 total
+
+Making PyPy about 10x as fast as Python 2.7.
+The same process without ``--shadow`` takes around 2.5 seconds with both implementations.
+
 Usage
 =====
 

@@ -12,7 +12,7 @@ except ImportError:
 
 setup(
     name='deba-bocho',
-    version='0.4.0',
+    version='0.4.1',
     provides=['bocho'],
     description='Slice up PDFs like a pro.',
     long_description=open('README.rst').read(),
@@ -32,5 +32,6 @@ setup(
     test_suite='tests',
     entry_points={'console_scripts': 'bocho = bocho.cmd:main'},
     py_modules=['bocho'],
+    packages=['bocho'],
     install_requires=install_requires,
 )

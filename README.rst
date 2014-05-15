@@ -42,7 +42,7 @@ For information on usage, run ``bocho --help``. If you want to use it as a modul
 Configuration
 =============
 
-If you will be using the same options many times, it's probably worth creating a preset in a ``config.ini`` file(see config.example.ini_ or the example below to get started).
+If you will be using the same options many times, it's probably worth creating a preset in a ``config.ini`` file (see config.example.ini_ or the example below to get started).
 
 .. _config.example.ini: https://github.com/jimr/deba-bocho/blob/master/config.example.ini
 
@@ -60,7 +60,9 @@ By default, ``bocho`` will check for ``$HOME/.config/bocho/config.ini``, so it's
     verbose = true
     use_convert = true
 
-You can then tell ``bocho`` to use this preset by calling ``bocho /path/to/file.pdf --preset example [--config /path/to/config.ini]``.
+You can tell ``bocho`` to use this preset by calling::
+
+    bocho /path/to/file.pdf --preset example [--config /path/to/config.ini]
 
 TODO
 ====

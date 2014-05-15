@@ -46,7 +46,7 @@ class CustomConfigParser(ConfigParser):
         else:
             result = self.get(section, name)
             if name in int_lists:
-                result = map(int, result.split(','))
+                result = list(map(int, result.split(',')))
         return result
 
 

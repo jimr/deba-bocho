@@ -19,7 +19,7 @@ except ImportError:
     WAND_AVAILABLE = False
 
 DEFAULTS = {
-    'pages': range(1, 6),
+    'pages': list(range(1, 6)),
     'width': 630,  # pixels
     'height': 290,  # pixels
     'angle': 0,  # degrees anti-clockwise from vertical
@@ -303,8 +303,8 @@ def assemble(fname, **kwargs):
 
     # If there's no angle specified then all the y coords will be zero and the
     # x coords will be a multiple of the provided spacing
-    x_coords = map(int, [i * spacing_x for i in range(n)])
-    y_coords = map(int, [i * spacing_y for i in range(n)])
+    x_coords = list(map(int, [i * spacing_x for i in range(n)]))
+    y_coords = list(map(int, [i * spacing_y for i in range(n)]))
 
     if angle < 0:
         y_coords.sort(reverse=True)
@@ -369,7 +369,7 @@ def assemble(fname, **kwargs):
 
     # Cropping is simply a case of positioning a rectangle of the desired
     # dimensions about the center of the image.
-    delta = map(px, ((width * scale) / zoom, (height * scale) / zoom))
+    delta = list(map(px, ((width * scale) / zoom, (height * scale) / zoom)))
     left = (outfile.size[0] - delta[0]) / 2 - (offset_x * scale)
     top = (outfile.size[1] - delta[1]) / 2 - (offset_y * scale)
     box = (left, top, left + delta[0], top + delta[1])

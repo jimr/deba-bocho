@@ -48,4 +48,4 @@ def main():
         raise Exception("Input file doesn't look like a PDF")
 
     kwargs = dict(args._get_kwargs())
-    print assemble(args.pdf_file, **kwargs)
+    print(assemble(args.pdf_file, **kwargs))

@@ -44,7 +44,7 @@ __all__ = ['bocho', 'slice_pages']
 
 def log(msg):
     if VERBOSE:
-        print msg
+        print(msg)
 
 
 def px(number):
@@ -206,7 +206,7 @@ def assemble(fname, **kwargs):
         msg = 'loading custom defaults from preset "%s"' % preset
         if cfg_fname:
             msg = '%s from %s' % (msg, cfg_fname)
-        print msg
+        print(msg)
         cfg = config.load(cfg_fname)
 
     def _kwarg_or_default(name):
@@ -216,8 +216,6 @@ def assemble(fname, **kwargs):
                 if cfg.has_option(preset, name):
                     return cfg.getval(preset, name)
             result = DEFAULTS.get(name)
-        else:
-            print '$$$ %s was not None' % name
         return result
 
     VERBOSE = _kwarg_or_default('verbose')

@@ -1,4 +1,4 @@
 include LICENSE.txt
 include README.rst
-include bocho.py
+include bocho/*.py
 include requirements.txt

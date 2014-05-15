@@ -20,6 +20,13 @@ class ConfigurationError(Exception):
 
 
 class CustomConfigParser(ConfigParser):
+    """Type-aware configuration parser.
+
+    We avoid the need for messy ``getfloat`` etc lookups elsewhere in the code
+    by recording which parameters are of which type, and offering a new
+    ``getval`` method that automatically does the Right Thing.
+
+    """
     def getval(self, section, name):
         int_lists = ['pages']
         floats = ['angle', 'zoom']
@@ -44,33 +51,28 @@ class CustomConfigParser(ConfigParser):
 
 
 def load(fname=None):
+    """Load and return configuration from a file.
+
+    Args:
+        fname (str): Path to the ini file we should use. If not provided, we
+            default to $HOME/.config/bocho/config.ini
+
+    Returns:
+        The parsed configuration
+
+    Raises:
+        ConfigurationError: if the file can't be found.
+
+    """
     if not fname:
-        fnames = []
-        # If we're running from a .pyc file, there won't be a symlink, so
-        # finding our way back to the config.ini won't work unless we do it
-        # from the symlinked .py file.
-        this_file = __file__
-        if this_file.endswith('.pyc'):
-            this_file = this_file[:-1]
-
         fname = os.path.join(
-            os.path.dirname(os.path.realpath(this_file)),
-            'config.ini',
+            os.getenv('HOME'), '.config', 'bocho', 'config.ini'
         )
-        fnames.append(fname)
 
-        # Check for $HOME/.config/pathfix/config.ini
-        if not os.path.exists(fname):
-            fname = os.path.join(
-                os.getenv('HOME'), '.config', 'bocho', 'config.ini'
-            )
-            fnames.append(fname)
-
-        if not os.path.exists(fname):
-            raise ConfigurationError(
-                "Unable to find configuration file. Tried:\n * %s" %
-                '\n * '.join(fnames)
-            )
+    if not os.path.exists(fname):
+        raise ConfigurationError(
+            "Unable to find configuration file."
+        )
 
     config = CustomConfigParser()
     config.read(fname)

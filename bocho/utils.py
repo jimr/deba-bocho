@@ -200,6 +200,7 @@ def assemble(fname, **kwargs):
     """
     global VERBOSE
 
+    cfg = None
     preset = kwargs.get('preset')
     cfg_fname = kwargs.get('config')
     if preset:

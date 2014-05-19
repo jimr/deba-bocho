@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 
 from bocho.utils import assemble
 
@@ -44,7 +45,8 @@ def main():
     parser.add_argument('--verbose', action='store_true', default=None)
     args = parser.parse_args()
 
-    if not args.pdf_file[-4:] == '.pdf':
+    name, ext = os.path.splitext(args.pdf_file)
+    if ext != '.pdf':
         raise Exception("Input file doesn't look like a PDF")
 
     kwargs = dict(args._get_kwargs())

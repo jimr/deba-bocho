@@ -42,6 +42,11 @@ def main():
     )
     parser.add_argument('--config', help='path to config.ini')
     parser.add_argument('--preset', help='load parameters from a named preset')
+    parser.add_argument(
+        '--parallel', type=int, nargs='?',
+        help='If set to a value > 1, we use that number of processes when '
+             'applying borders & shadow to individual pages.',
+    )
     parser.add_argument('--verbose', action='store_true', default=None)
     args = parser.parse_args()
 

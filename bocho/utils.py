@@ -8,6 +8,10 @@ import shlex
 import subprocess
 import tempfile
 
+from functools import partial
+from itertools import imap
+from multiprocessing import Pool
+
 from PIL import Image
 
 from bocho import config
@@ -109,11 +113,14 @@ def slice_pages(fname, pages, out_path=None, resolution=300, use_convert=True):
     return glob.glob('%s*' % out_path[:-4])
 
 
-def _add_border(img, fill='black', width=2, shadow=False):
+def _add_border(fpath, fill='black', width=2, shadow=False):
+    img = Image.open(fpath)
+    img.putalpha(255)
+
     if not width or width < 0:
         return img
 
-    log('drawing borders on a page %dx%d' % img.size)
+    log('drawing borders on %s %dx%d' % (fpath, img.size[0], img.size[1]))
     new_img = Image.new(
         'RGBA', (img.size[0] + width * 2, img.size[1] + width * 2), fill,
     )
@@ -157,7 +164,15 @@ def _add_border(img, fill='black', width=2, shadow=False):
 
     new_img.paste(img, (width, width), img)
 
-    return new_img
+    result = (list(new_img.getdata()), new_img.size)
+    log('drawn borders on %s, returning result' % fpath)
+
+    fd, out_path = tempfile.mkstemp(
+        prefix=os.path.splitext(fpath)[0], suffix='.png'
+    )
+    os.close(fd)
+    new_img.save(out_path)
+    return out_path
 
 
 def assemble(fname, **kwargs):
@@ -193,6 +208,7 @@ def assemble(fname, **kwargs):
         use_convert (bool): optionally use 'convert' rather than Wand
         config (str): custom path to config.ini
         preset (str): use the named preset to override defaults
+        parallel (int): use multiprocessing to apply the borders & shadow
 
     Returns:
         string. The path to the output file
@@ -239,6 +255,7 @@ def assemble(fname, **kwargs):
     reuse = _kwarg_or_default('reuse')
     delete = _kwarg_or_default('delete')
     use_convert = _kwarg_or_default('use_convert')
+    parallel = _kwarg_or_default('parallel')
 
     if not use_convert and not WAND_AVAILABLE:
         log('Wand is not installed, so using `convert` directly.')
@@ -327,13 +344,23 @@ def assemble(fname, **kwargs):
 
     outfile = Image.new('RGB', size)
     log('outfile dimensions: %dx%d' % outfile.size)
+    border = partial(_add_border, width=border, shadow=shadow)
 
-    for x, tmp in enumerate(reversed(tmp_image_names), 1):
+    # _add_border returns a path to a temporary file containing the page plus
+    # border
+    if parallel and parallel > 1:
+        log('applying borders with %d processes' % parallel)
+        p = Pool(parallel)
+        mapper = p.imap
+    else:
+        log('applying borders sequentially')
+        mapper = imap
+
+    iterable = mapper(border, reversed(tmp_image_names))
+    for x, fpath in enumerate(iterable, 1):
         # Draw lines down the right and bottom edges of each page to provide
         # visual separation. Cheap drop-shadow basically.
-        img = Image.open(tmp)
-        img.putalpha(255)
-        img = _add_border(img, width=border, shadow=shadow)
+        img = Image.open(fpath)
 
         if reverse:
             coords = (x_coords[x - 1], y_coords[x - 1])
@@ -343,6 +370,7 @@ def assemble(fname, **kwargs):
         # If we don't use img as the mask, PIL drops the alpha channel
         log('placing page %d at %s' % (pages[-x], coords))
         outfile.paste(img, coords, img)
+        os.remove(fpath)
 
     del page_0, img
 

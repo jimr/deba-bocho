@@ -36,6 +36,7 @@ class CustomConfigParser(ConfigParser):
         ]
         bools = [
             'shadow', 'affine', 'reverse', 'reuse', 'delete', 'use_convert',
+            'verbose',
         ]
         if name in floats:
             result = self.getfloat(section, name)

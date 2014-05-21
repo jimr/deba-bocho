@@ -32,7 +32,7 @@ class CustomConfigParser(ConfigParser):
         floats = ['angle', 'zoom']
         ints = [
             'width', 'height', 'border', 'spacing_x', 'spacing_y', 'offset_x',
-            'offset_y',
+            'offset_y', 'parallel',
         ]
         bools = [
             'shadow', 'affine', 'reverse', 'reuse', 'delete', 'use_convert',

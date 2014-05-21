@@ -81,6 +81,7 @@ By default, ``bocho`` will check for ``$HOME/.config/bocho/config.ini``, so it's
     delete = true
     verbose = true
     use_convert = true
+    parallel = 5
 
 You can tell ``bocho`` to use this preset by calling::
 

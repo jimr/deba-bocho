@@ -4,7 +4,7 @@
 import argparse
 import os
 
-from bocho.utils import assemble
+from bocho import assemble
 
 
 def main():

@@ -93,7 +93,7 @@ TODO
 - implement rotation properly ✓
 - allow a "zoom" option ✓
 - optional drop-shadows ✓
-- make shadows smarter in their orientation (they're currently uniform, not respecting the angle / affine transformation)
+- make shadows smarter in their orientation (they're currently uniform, not respecting the angle / transformations)
 - make the basic edge separators optional ✓
 - automatic spacing as an option as well as fixed pixel spacing
 - horizontal and vertical spacing ✓
@@ -102,7 +102,9 @@ TODO
 - handle non-A4 aspect ratio input documents ✓
 - optionally apply transforms:
 
-  - affine ✓ (basic, subtle, non-configurable)
+  - affine ✗ (abandoned in favour of vertical / horizontal shear effects)
+  - shear ✓ (applied by creating simplified affine transforms)
+  - stretch (can be achieved in a similar fashion to shear)
   - perspective
 
 - ensure sliced PNGs are large enough when custom width / height are specified

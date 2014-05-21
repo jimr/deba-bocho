@@ -29,14 +29,13 @@ class CustomConfigParser(ConfigParser):
     """
     def getval(self, section, name):
         int_lists = ['pages']
-        floats = ['angle', 'zoom']
+        floats = ['angle', 'zoom', 'shear_x', 'shear_y']
         ints = [
             'width', 'height', 'border', 'spacing_x', 'spacing_y', 'offset_x',
             'offset_y', 'parallel',
         ]
         bools = [
-            'shadow', 'affine', 'reverse', 'reuse', 'delete', 'use_convert',
-            'verbose',
+            'shadow', 'reverse', 'reuse', 'delete', 'use_convert', 'verbose',
         ]
         if name in floats:
             result = self.getfloat(section, name)

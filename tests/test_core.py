@@ -17,12 +17,7 @@ class TestAll(unittest.TestCase):
         )
 
     def cleanup(self, fname):
-        os.remove(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                fname,
-            )
-        )
+        os.remove(fname)
 
     def test_basic_stack(self):
         output = assemble(self.fname)

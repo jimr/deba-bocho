@@ -166,8 +166,11 @@ def _add_border(fpath, fill='black', width=2, shadow=False):
     log('drawn borders on %s, returning result' % fpath)
 
     fd, out_path = tempfile.mkstemp(
-        prefix=os.path.splitext(fpath)[0], suffix='.png'
+        prefix=os.path.splitext(os.path.basename(fpath))[0],
+        suffix='.png',
+        dir=os.path.dirname(fpath),
     )
+    log('created temporary file for drawing the borders: %s' % out_path)
     os.close(fd)
     new_img.save(out_path)
     return out_path

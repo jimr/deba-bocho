@@ -121,4 +121,6 @@ TODO
 License
 =======
 
-See ``LICENSE.txt``. Test images are from the USC-SIPI Image Database (http://sipi.usc.edu/database/).
+See ``LICENSE.txt``.
+Test images are from the USC-SIPI Image Database (http://sipi.usc.edu/database/).
+The test PDF is "Distributed Space-Time Interference Alignment" (`arXiv:1405.0032 <http://arxiv.org/abs/1405.0032>`_).

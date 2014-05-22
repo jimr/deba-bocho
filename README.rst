@@ -117,3 +117,8 @@ TODO
 - docs ✓
 - pretty pictures illustrating the effect of the various options
 - use proper logging
+
+License
+=======
+
+See ``LICENSE.txt``. Test images are from the USC-SIPI Image Database (http://sipi.usc.edu/database/).

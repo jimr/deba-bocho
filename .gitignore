@@ -2,6 +2,7 @@ tox-local.ini
 
 *.sw[op]
 *.py[cod]
+.DS_Store
 
 # C extensions
 *.so

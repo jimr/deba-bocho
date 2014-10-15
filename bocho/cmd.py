@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--zoom', type=float, nargs='?')
     parser.add_argument('--reverse', action='store_true', default=None)
     parser.add_argument('--border', type=int, nargs='?')
+    parser.add_argument('--colour', nargs='?')
     parser.add_argument('--shadow', action='store_true', default=None)
     parser.add_argument('--affine', action='store_true', default=None)
     parser.add_argument('--use_convert', action='store_true', default=None)

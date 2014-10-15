@@ -35,6 +35,7 @@ DEFAULTS = {
     'spacing_y': 0,  # pixels
     'zoom': 1.0,
     'border': 2,  # pixels
+    'colour': '#000',
     'shadow': False,
     'shear_x': False,
     'shear_y': False,
@@ -201,6 +202,7 @@ def assemble(fname, **kwargs):
         spacing_y (int): vertical pixel spacing between pages
         zoom: (tuple) zoom factor to be applied after arranging pages
         border (int): pixel width of the page border to be added
+        colour (str): colour of the page border
         shadow (bool): soften the border for a 'shadow' effect (slow)
         shear_x (float): optionally apply a horizontal shear effect
         shear_y (float): optionally apply a vertical shear effect
@@ -251,6 +253,7 @@ def assemble(fname, **kwargs):
     angle = _kwarg_or_default('angle')
     zoom = _kwarg_or_default('zoom')
     border = _kwarg_or_default('border')
+    colour = _kwarg_or_default('colour')
     shadow = _kwarg_or_default('shadow')
     shear_x = _kwarg_or_default('shear_x')
     shear_y = _kwarg_or_default('shear_y')
@@ -344,7 +347,7 @@ def assemble(fname, **kwargs):
 
     outfile = Image.new('RGB', size)
     log('outfile dimensions: %dx%d' % outfile.size)
-    border = partial(_add_border, width=border, shadow=shadow)
+    border = partial(_add_border, width=border, shadow=shadow, fill=colour)
 
     # _add_border returns a path to a temporary file containing the page plus
     # border

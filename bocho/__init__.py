@@ -163,7 +163,6 @@ def _add_border(fpath, fill='black', width=2, shadow=False):
 
     new_img.paste(img, (width, width), img)
 
-    result = (list(new_img.getdata()), new_img.size)
     log('drawn borders on %s, returning result' % fpath)
 
     fd, out_path = tempfile.mkstemp(
